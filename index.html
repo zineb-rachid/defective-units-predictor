@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prédiction Defective Units avec export</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 400px;
+    margin: 30px auto;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+  }
+  label {
+    display: block;
+    margin-top: 12px;
+    font-weight: bold;
+  }
+  select, input[type=number] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    box-sizing: border-box;
+  }
+  button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px;
+     background-color: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 1em;
+  }
+  button:hover {
+    background: darkmagenta;
+  }
+  #result {
+    margin-top: 25px;
+    font-size: 1.2em;
+    color: darkblue;
+    min-height: 1.4em;
+  }
+  .export-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .export-buttons button {
+    flex: 1;
+    font-size: 0.9em;
+    background: #007bff;
+  }
+  .export-buttons button:hover {
+    background: #0056b3;
+  }
+</style>
+</head>
+<body>
+
+<h2>Prédiction Defective Units</h2>
+
+<form id="predictForm">
+  <label for="supplier">Supplier :</label>
+  <select id="supplier" required>
+    <option value="" disabled selected>Choisissez un fournisseur</option>
+    <option value="A">Supplier A</option>
+    <option value="B">Supplier B</option>
+    <option value="C">Supplier C</option>
+  </select>
+
+  <label for="quantity">Quantity :</label>
+  <input type="number" id="quantity" min="1" step="1" required />
+
+  <label for="compliance">Compliance :</label>
+  <select id="compliance" required>
+    <option value="" disabled selected>Choisissez Oui ou Non</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+
+  <button type="submit">Prédire</button>
+</form>
+
+<div id="result"></div>
+
+<div class="export-buttons" style="display:none;">
+  <button id="exportExcel">Exporter en Excel</button>
+  <button id="exportPDF">Exporter en PDF</button>
+</div>
+
+<!-- SheetJS -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+  let latestData = null; // To keep last inputs + prediction
+
+  function predictDefectiveUnits(supplier, quantity, compliance) {
+    let base = 5;
+    if (supplier === 'A') base = 4;
+    else if (supplier === 'B') base = 6;
+    else if (supplier === 'C') base = 7;
+
+    let complianceFactor = compliance === 'Yes' ? 0.8 : 1.2;
+    let quantityFactor = quantity / 1000 * 0.5;
+
+    let predicted = base * complianceFactor + quantityFactor;
+    return Math.round(predicted * 10) / 10;
+  }
+
+  document.getElementById('predictForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    let supplier = document.getElementById('supplier').value;
+    let quantity = parseInt(document.getElementById('quantity').value, 10);
+    let compliance = document.getElementById('compliance').value;
+
+    let prediction = predictDefectiveUnits(supplier, quantity, compliance);
+
+    const resultDiv = document.getElementById('result');
+    resultDiv.textContent = `Nombre prédit de Defective Units : ${prediction}`;
+
+    // Save latest data for export
+    latestData = { supplier, quantity, compliance, prediction };
+
+    // Show export buttons
+    document.querySelector('.export-buttons').style.display = 'flex';
+  });
+
+  // Excel export
+  document.getElementById('exportExcel').addEventListener('click', function() {
+    if (!latestData) return alert("Faites une prédiction d'abord.");
+
+    const ws_data = [
+      ["Variable", "Valeur"],
+      ["Supplier", latestData.supplier],
+      ["Quantity", latestData.quantity],
+      ["Compliance", latestData.compliance],
+      ["Predicted Defective Units", latestData.prediction]
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "Prediction");
+
+    XLSX.writeFile(wb, "prediction_defective_units.xlsx");
+  });
+
+  // PDF export
+  document.getElementById('exportPDF').addEventListener('click', function() {
+    if (!latestData) return alert("Faites une prédiction d'abord.");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Prédiction Defective Units", 20, 20);
+
+    doc.setFontSize(12);
+    doc.text(`Supplier: ${latestData.supplier}`, 20, 40);
+    doc.text(`Quantity: ${latestData.quantity}`, 20, 50);
+    doc.text(`Compliance: ${latestData.compliance}`, 20, 60);
+    doc.text(`Predicted Defective Units: ${latestData.prediction}`, 20, 70);
+
+    doc.save("prediction_defective_units.pdf");
+  });
+</script>
+
+</body>
+</html>
